@@ -2,20 +2,22 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Mimic Meme Party</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700;900&display=swap');
 
         body {
             font-family: 'Nunito', sans-serif;
-            background-color: #0f172a; /* Slate 900 for outside app area */
+            background-color: #0f172a;
             margin: 0;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
+            overflow: hidden;
+            touch-action: manipulation;
         }
 
         .font-display {
@@ -24,10 +26,9 @@
 
         .app-container {
             width: 100%;
-            max-width: 400px;
+            max-width: 450px;
             height: 100vh;
-            max-height: 850px;
-            background: linear-gradient(180deg, #3b82f6 0%, #1e3a8a 100%);
+            background: linear-gradient(135deg, #4f46e5 0%, #7e22ce 100%);
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
             position: relative;
             overflow: hidden;
@@ -35,10 +36,11 @@
             flex-direction: column;
         }
 
-        @media (min-width: 450px) {
+        @media (min-width: 480px) {
             .app-container {
                 height: 90vh;
-                border-radius: 2rem;
+                max-height: 850px;
+                border-radius: 2.5rem;
                 border: 8px solid #000;
             }
         }
@@ -50,470 +52,871 @@
             height: 100%;
             padding: 1.5rem;
             box-sizing: border-box;
-            animation: fadeIn 0.3s ease-out forwards;
+            animation: slideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            overflow-y: auto;
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
         }
 
         .screen.active {
             display: flex;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+        @keyframes slideIn {
+            from { opacity: 0; transform: scale(0.95) translateY(20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
         }
 
-        @keyframes pulse-record {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-            70% { box-shadow: 0 0 0 20px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        .btn-primary {
+            background: linear-gradient(to bottom, #fde047, #eab308);
+            color: #4c1d95;
+            font-family: 'Fredoka One', cursive;
+            box-shadow: 0 6px 0 #a16207, 0 15px 20px rgba(0,0,0,0.2);
+            transition: all 0.1s;
+        }
+        .btn-primary:active {
+            transform: translateY(6px);
+            box-shadow: 0 0px 0 #a16207, 0 5px 10px rgba(0,0,0,0.2);
         }
 
-        .recording-pulse {
-            animation: pulse-record 1.5s infinite;
-            background-color: #ef4444 !important; /* red-500 */
+        .avatar-option {
+            transition: all 0.2s;
+            border: 3px solid transparent;
+        }
+        .avatar-option.selected {
+            border-color: #fde047;
+            background-color: rgba(255, 255, 255, 0.2);
+            transform: scale(1.1);
         }
 
-        /* Custom Scrollbar for meme list */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
+        @keyframes pulse-ring {
+            0% { transform: scale(1); opacity: 0.8; }
+            100% { transform: scale(1.5); opacity: 0; }
         }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
+        .recording-wave {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background-color: #ef4444;
+            z-index: -1;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.5);
-            border-radius: 10px;
+        .is-recording .recording-wave {
+            animation: pulse-ring 1s infinite cubic-bezier(0.215, 0.61, 0.355, 1);
         }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.3); border-radius: 10px; }
     </style>
 </head>
 <body class="text-white">
 
     <div class="app-container">
         
-        <!-- HEADER (Hidden on start screen) -->
-        <div id="app-header" class="hidden flex justify-between items-center py-3 px-5 bg-white/10 backdrop-blur-md z-10">
-            <div class="flex items-center gap-2">
-                <div class="w-8 h-8 rounded-full bg-yellow-400 flex items-center justify-center text-blue-900 font-bold" id="header-avatar">?</div>
-                <span id="header-player-name" class="font-bold text-sm">Jugador</span>
-            </div>
-            <div class="text-xs bg-blue-900/50 px-3 py-1 rounded-full border border-blue-400/30">
-                Mimic Party
-            </div>
-        </div>
-
-        <!-- SCREEN 1: Home -->
-        <div id="screen-home" class="screen active justify-center items-center text-center">
-            <div class="mb-8 relative">
-                <div class="absolute -inset-4 bg-blue-400 rounded-full blur-xl opacity-50"></div>
-                <div class="w-32 h-32 bg-yellow-400 rounded-3xl rotate-12 mx-auto flex items-center justify-center shadow-2xl relative z-10 border-4 border-white">
-                    <svg class="w-20 h-20 text-blue-900" fill="currentColor" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.43 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z"/></svg>
+        <!-- HEADER -->
+        <div id="app-header" class="hidden flex justify-between items-center py-4 px-5 bg-black/20 backdrop-blur-md z-50">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-2xl border-2 border-yellow-400" id="header-avatar">🤖</div>
+                <div class="flex flex-col">
+                    <span id="header-player-name" class="font-bold text-sm leading-tight text-white">Jugador</span>
+                    <span id="header-mode-badge" class="text-[10px] font-bold text-yellow-300 uppercase tracking-wider">Modo Local</span>
                 </div>
             </div>
-            <h1 class="font-display text-5xl mb-2 tracking-wide drop-shadow-md text-white">MIMIC</h1>
-            <h2 class="font-display text-3xl mb-8 text-yellow-300 drop-shadow-md">MEME PARTY</h2>
-            <p class="mb-10 text-blue-100 px-4">¡Copia el sonido, haz reír a tus amigos y descubre quién es el mejor imitador!</p>
-            
-            <button onclick="navigate('screen-players')" class="w-full bg-gradient-to-b from-yellow-300 to-yellow-500 hover:from-yellow-200 hover:to-yellow-400 text-blue-900 font-display text-xl py-4 rounded-full shadow-[0_6px_0_#b45309] active:shadow-[0_0px_0_#b45309] active:translate-y-[6px] transition-all">
-                ¡EMPEZAR FIESTA!
+            <button onclick="confirmExit()" class="w-8 h-8 rounded-full bg-red-500/20 text-red-300 flex items-center justify-center hover:bg-red-500/40">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
         </div>
 
-        <!-- SCREEN 2: Select Player -->
-        <div id="screen-players" class="screen pb-8">
-            <h2 class="font-display text-2xl mb-2 text-center mt-4">¿Quién es el turno?</h2>
-            <p class="text-center text-sm text-blue-200 mb-6">Pasa el teléfono al jugador seleccionado</p>
-            
-            <div class="flex-1 overflow-y-auto custom-scrollbar px-2 space-y-3" id="player-list">
-                <!-- Players will be injected here by JS -->
+        <!-- SCREEN 1: Choose Mode -->
+        <div id="screen-mode" class="screen active justify-center items-center text-center">
+            <div class="mb-6 relative">
+                <div class="absolute -inset-6 bg-yellow-400 rounded-full blur-2xl opacity-20 animate-pulse"></div>
+                <div class="text-8xl relative z-10 drop-shadow-2xl mb-4">🎭</div>
             </div>
-
-            <button onclick="navigate('screen-home')" class="mt-6 text-blue-200 hover:text-white underline text-sm text-center">Volver al inicio</button>
+            <h1 class="font-display text-5xl mb-2 tracking-wide drop-shadow-md text-white">MIMIC</h1>
+            <h2 class="font-display text-3xl mb-10 text-yellow-300 drop-shadow-md">MEME PARTY</h2>
+            
+            <div class="w-full space-y-4 px-2">
+                <button onclick="selectMode('local')" class="w-full bg-white/10 border-2 border-white/20 hover:bg-white/20 p-6 rounded-3xl backdrop-blur-sm transition-all transform hover:scale-[1.02]">
+                    <div class="text-4xl mb-2">📱</div>
+                    <h3 class="font-display text-2xl text-white mb-1">Modo Local</h3>
+                    <p class="text-sm text-blue-200">Pasa el teléfono de uno por uno</p>
+                </button>
+                
+                <button onclick="selectMode('online')" class="w-full bg-blue-600/40 border-2 border-blue-400/40 hover:bg-blue-600/60 p-6 rounded-3xl backdrop-blur-sm transition-all transform hover:scale-[1.02]">
+                    <div class="text-4xl mb-2">🌐</div>
+                    <h3 class="font-display text-2xl text-white mb-1">Modo Online</h3>
+                    <p class="text-sm text-blue-200">Juega en salas con amigos</p>
+                </button>
+            </div>
         </div>
 
-        <!-- SCREEN 4: Action (Listen & Record) -->
-        <div id="screen-action" class="screen justify-center items-center text-center pb-8">
-            <div class="bg-white/10 border border-white/20 rounded-3xl p-6 w-full shadow-lg backdrop-blur-sm mb-8 flex flex-col items-center">
-                <span class="text-4xl mb-4" id="action-emoji">🎭</span>
-                <h3 class="font-bold text-xl mb-4 text-yellow-300">Tu frase al azar:</h3>
-                <p id="action-meme-text" class="text-2xl font-display leading-tight mb-6 text-white"></p>
+        <!-- SCREEN 2: Player Setup -->
+        <div id="screen-setup" class="screen pb-8 pt-12">
+            <h2 class="font-display text-3xl mb-6 text-center text-white">Crea tu Perfil</h2>
+            
+            <div class="bg-white/10 rounded-3xl p-6 border border-white/10 backdrop-blur-sm mb-6">
+                <label class="block text-sm font-bold text-blue-200 mb-2">Tu Nombre:</label>
+                <input type="text" id="input-name" placeholder="Ej. Nahim" class="w-full bg-black/30 border-2 border-white/20 rounded-xl px-4 py-3 text-white font-bold text-lg outline-none focus:border-yellow-400 transition-colors mb-6 text-center">
                 
-                <button onclick="listenMeme()" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white py-3 px-6 rounded-full font-bold shadow-md transition-colors w-full justify-center">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
+                <label class="block text-sm font-bold text-blue-200 mb-3 text-center">Elige tu Avatar:</label>
+                <div class="grid grid-cols-4 gap-3 mb-2" id="avatar-grid">
+                    <button class="avatar-option text-4xl w-full aspect-square rounded-2xl bg-white/5 flex items-center justify-center selected" onclick="selectAvatar('🤖', this)">🤖</button>
+                    <button class="avatar-option text-4xl w-full aspect-square rounded-2xl bg-white/5 flex items-center justify-center" onclick="selectAvatar('👾', this)">👾</button>
+                    <button class="avatar-option text-4xl w-full aspect-square rounded-2xl bg-white/5 flex items-center justify-center" onclick="selectAvatar('🦄', this)">🦄</button>
+                    <button class="avatar-option text-4xl w-full aspect-square rounded-2xl bg-white/5 flex items-center justify-center" onclick="selectAvatar('👻', this)">👻</button>
+                </div>
+            </div>
+
+            <button onclick="finishSetup()" class="w-full btn-primary text-xl py-4 rounded-full mt-auto">
+                Continuar
+            </button>
+        </div>
+
+        <!-- SCREEN 3: Online Menu (Create/Join) -->
+        <div id="screen-online-menu" class="screen justify-center pb-8">
+            <h2 class="font-display text-3xl mb-8 text-center text-white">Multijugador</h2>
+            
+            <button onclick="createRoom()" class="w-full bg-gradient-to-r from-purple-500 to-indigo-500 p-6 rounded-3xl border border-white/20 shadow-lg mb-6 transform hover:scale-[1.02] transition-all">
+                <div class="text-3xl mb-2">👑</div>
+                <h3 class="font-bold text-xl text-white">Crear Sala</h3>
+                <p class="text-sm text-purple-200">Sé el host de la fiesta</p>
+            </button>
+            
+            <div class="relative flex items-center justify-center mb-6">
+                <div class="border-t border-white/20 w-full"></div>
+                <span class="bg-[#5d2baf] px-4 text-sm font-bold text-white/50 absolute">O ÚNETE</span>
+            </div>
+
+            <div class="bg-white/10 rounded-3xl p-6 border border-white/10 backdrop-blur-sm">
+                <label class="block text-sm font-bold text-blue-200 mb-2 text-center">Código de Sala:</label>
+                <input type="text" id="input-room-code" maxlength="4" placeholder="ABCD" class="w-full bg-black/30 border-2 border-white/20 rounded-xl px-4 py-4 text-white font-display text-3xl tracking-[0.5em] uppercase text-center outline-none focus:border-yellow-400 transition-colors mb-4">
+                <button id="btn-join-room" onclick="joinRoom()" class="w-full bg-blue-500 hover:bg-blue-400 text-white font-bold py-3 rounded-xl transition-colors">
+                    Unirse a la Sala
+                </button>
+            </div>
+        </div>
+
+        <!-- SCREEN 4: Lobby (Online) -->
+        <div id="screen-lobby" class="screen pb-8 pt-20">
+            <div class="bg-black/30 rounded-2xl p-4 text-center mb-6 border border-white/10">
+                <p class="text-sm text-blue-200 mb-1">Código de Sala</p>
+                <h2 id="lobby-room-code" class="font-display text-5xl text-yellow-400 tracking-widest">ABCD</h2>
+            </div>
+            
+            <h3 class="font-bold text-lg mb-3 flex justify-between items-end">
+                <span>Jugadores Unidos</span>
+                <span id="lobby-count" class="text-sm text-blue-300">0/10</span>
+            </h3>
+            
+            <div class="flex-1 overflow-y-auto custom-scrollbar bg-white/5 rounded-3xl border border-white/10 p-2 mb-6" id="lobby-players">
+                <!-- Players injected here -->
+            </div>
+
+            <div id="host-controls" class="hidden">
+                <button onclick="startOnlineGame()" class="w-full btn-primary text-xl py-4 rounded-full">
+                    ¡Comenzar Ronda!
+                </button>
+            </div>
+            <div id="guest-controls" class="text-center">
+                <p class="text-blue-200 animate-pulse bg-white/10 py-3 rounded-xl border border-white/10">Esperando al host...</p>
+            </div>
+        </div>
+
+        <!-- SCREEN 5: Action (Record) -->
+        <div id="screen-action" class="screen justify-center items-center text-center pb-8 pt-20">
+            <div class="bg-white/10 border border-white/20 rounded-3xl p-6 w-full shadow-lg backdrop-blur-sm mb-8 flex flex-col items-center">
+                <span class="text-5xl mb-4" id="action-emoji">🎭</span>
+                <h3 class="font-bold text-sm uppercase tracking-wider mb-3 text-yellow-300">Imita este meme:</h3>
+                <p id="action-meme-text" class="text-2xl font-display leading-tight mb-4 text-white">"..."</p>
+                
+                <button onclick="listenMeme()" class="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white py-2 px-6 rounded-full font-bold transition-colors w-full text-sm">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
                     Escuchar Ejemplo
                 </button>
             </div>
 
             <div class="flex-1 flex flex-col items-center justify-center w-full">
-                <p id="record-status" class="mb-4 font-bold text-blue-200 h-6">Toca para grabar</p>
+                <div class="relative w-40 h-40 flex items-center justify-center mb-6">
+                    <div class="recording-wave"></div>
+                    <button id="btn-record" onclick="startFakeRecording()" class="w-32 h-32 bg-red-500 rounded-full flex items-center justify-center shadow-2xl border-4 border-white transition-all transform hover:scale-105 z-10 relative">
+                        <svg id="icon-mic" class="w-14 h-14 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.43 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z"/></svg>
+                    </button>
+                </div>
+                <p id="record-status" class="font-bold text-xl text-blue-200">Toca para grabar</p>
+                <div id="record-progress-container" class="w-full max-w-[200px] h-2 bg-black/30 rounded-full mt-4 hidden overflow-hidden">
+                    <div id="record-progress-bar" class="h-full bg-yellow-400 w-0 transition-all duration-[3000ms] ease-linear"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN 6: Analyzing -->
+        <div id="screen-analyzing" class="screen justify-center items-center text-center pt-20">
+            <div class="text-7xl animate-bounce mb-6">🤖</div>
+            <h2 class="font-display text-3xl mb-4 text-white">Analizando Voz...</h2>
+            <p class="text-blue-200 mb-8 max-w-[250px]">Evaluando tono, comedia y nivel de cringe...</p>
+            
+            <div class="w-full max-w-[250px] bg-black/40 rounded-full h-4 mb-4 overflow-hidden border border-white/20 p-1">
+                <div class="bg-gradient-to-r from-blue-400 to-yellow-400 h-full rounded-full w-full animate-[slideRight_2s_ease-in-out_infinite] origin-left"></div>
+            </div>
+        </div>
+        <style>
+            @keyframes slideRight {
+                0% { transform: scaleX(0); opacity: 0.5; }
+                50% { transform: scaleX(1); opacity: 1; }
+                100% { transform: scaleX(0); transform-origin: right; opacity: 0.5; }
+            }
+        </style>
+
+        <!-- SCREEN 7: Waiting (Online) -->
+        <div id="screen-waiting" class="screen justify-center items-center text-center pt-20">
+            <div class="text-6xl mb-6">⏳</div>
+            <h2 class="font-display text-3xl mb-4 text-white">¡Imitación enviada!</h2>
+            <p class="text-blue-200 bg-black/20 p-4 rounded-2xl border border-white/10">Esperando a que los demás jugadores terminen de grabar...</p>
+        </div>
+
+        <!-- SCREEN 8: Results (Local / Online Leaderboard) -->
+        <div id="screen-results" class="screen pb-8 pt-20">
+            <h2 class="font-display text-3xl mb-6 text-center text-white" id="results-title">Resultados</h2>
+            
+            <!-- LOCAL RESULT -->
+            <div id="local-result-view" class="hidden flex-col items-center w-full">
+                <div class="bg-white/10 border border-white/20 rounded-3xl p-8 w-full shadow-lg backdrop-blur-sm mb-8 flex flex-col items-center">
+                    <p class="text-lg mb-4 text-blue-200">Puntuación de <span id="local-result-name" class="font-bold text-white"></span>:</p>
+                    <div class="relative w-48 h-48 flex items-center justify-center mb-4">
+                        <svg class="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 36 36">
+                            <path class="text-black/30" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="4" stroke-dasharray="100, 100" />
+                            <path id="score-circle" class="text-yellow-400 transition-all duration-1000 ease-out" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="4" stroke-dasharray="0, 100" stroke-linecap="round"/>
+                        </svg>
+                        <span id="score-value" class="font-display text-6xl text-white drop-shadow-md">0</span>
+                    </div>
+                    <p id="score-message" class="text-xl font-bold text-center"></p>
+                </div>
+                <button onclick="resetLocalRound()" class="w-full btn-primary text-xl py-4 rounded-full mt-auto">
+                    Siguiente Jugador
+                </button>
+            </div>
+
+            <!-- ONLINE LEADERBOARD -->
+            <div id="online-result-view" class="hidden flex-col w-full h-full">
+                <div class="flex-1 overflow-y-auto custom-scrollbar space-y-3 mb-6" id="leaderboard-list">
+                    <!-- Leaderboard injected here -->
+                </div>
                 
-                <button id="btn-record" onclick="toggleRecording()" class="w-32 h-32 bg-blue-500 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.6)] border-4 border-white transition-all transform hover:scale-105">
-                    <svg id="icon-mic" class="w-12 h-12 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.43 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z"/></svg>
-                    <svg id="icon-stop" class="w-12 h-12 text-white hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg>
-                </button>
-            </div>
-            
-            <button onclick="pickRandomMeme()" class="mt-6 text-blue-200 hover:text-white underline text-sm">Cambiar meme (Aleatorio)</button>
-        </div>
-
-        <!-- SCREEN 5: Results -->
-        <div id="screen-results" class="screen justify-center items-center text-center pb-8">
-            <h2 class="font-display text-3xl mb-6 text-white">Momento de la verdad</h2>
-            
-            <div class="bg-white/10 border border-white/20 rounded-3xl p-6 w-full shadow-lg backdrop-blur-sm mb-8">
-                <p class="mb-4 text-sm text-blue-200">Tu obra maestra:</p>
-                <audio id="audio-playback" controls class="w-full mb-2 h-10 rounded-full"></audio>
-            </div>
-
-            <!-- Analyzing UI -->
-            <div id="analyzing-container" class="hidden flex-col items-center w-full mb-8">
-                <p class="text-xl font-bold mb-4 text-yellow-300 animate-pulse">Analizando imitación...</p>
-                <div class="w-full bg-blue-900/50 rounded-full h-4 mb-4 overflow-hidden border border-blue-500/30">
-                    <div id="analyzing-bar" class="bg-gradient-to-r from-blue-400 to-yellow-400 h-4 rounded-full w-0 transition-all duration-[3000ms] ease-out"></div>
+                <div id="host-next-round" class="hidden mt-auto">
+                    <button onclick="startOnlineGame()" class="w-full btn-primary text-xl py-4 rounded-full shadow-xl">
+                        Siguiente Ronda
+                    </button>
                 </div>
-            </div>
-
-            <div id="score-container" class="hidden flex-col items-center w-full mb-8 animation-fadeIn">
-                <p class="text-lg mb-2">Puntuación:</p>
-                <div class="relative w-40 h-40 flex items-center justify-center">
-                    <svg class="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 36 36">
-                        <path class="text-white/20" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="100, 100" />
-                        <path id="score-circle" class="text-yellow-400 transition-all duration-1000 ease-out" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="0, 100" />
-                    </svg>
-                    <span id="score-value" class="font-display text-5xl text-yellow-300 drop-shadow-md">0</span>
+                <div id="guest-next-round" class="text-center mt-auto">
+                    <p class="text-blue-200">Esperando al host para la siguiente ronda...</p>
                 </div>
-                <p id="score-message" class="mt-6 text-xl font-bold px-4 text-white"></p>
-            </div>
-
-            <div id="action-buttons-results" class="w-full mt-auto space-y-4">
-                <button id="btn-next-player" onclick="navigate('screen-players')" class="hidden w-full bg-gradient-to-b from-yellow-300 to-yellow-500 hover:from-yellow-200 hover:to-yellow-400 text-blue-900 font-display text-xl py-4 rounded-full shadow-[0_6px_0_#b45309] active:shadow-[0_0px_0_#b45309] active:translate-y-[6px] transition-all">
-                    Siguiente Turno
-                </button>
             </div>
         </div>
 
-        <!-- Custom Modal for Errors/Messages -->
-        <div id="custom-modal" class="hidden absolute inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm opacity-0 transition-opacity">
-            <div class="bg-white rounded-2xl p-6 w-full max-w-sm text-center shadow-2xl transform scale-95 transition-transform" id="modal-content-box">
-                <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
-                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                </div>
-                <h3 id="modal-title" class="text-xl font-bold text-gray-900 mb-2">Error</h3>
-                <p id="modal-text" class="text-gray-600 mb-6">Mensaje de error aquí.</p>
+        <!-- Modals for Alerts -->
+        <div id="custom-modal" class="hidden absolute inset-0 bg-black/80 z-[100] flex items-center justify-center p-6 backdrop-blur-sm opacity-0 transition-opacity">
+            <div class="bg-white rounded-3xl p-6 w-full max-w-sm text-center shadow-2xl transform scale-95 transition-transform" id="modal-content-box">
+                <h3 id="modal-title" class="font-display text-2xl text-gray-900 mb-2">Aviso</h3>
+                <p id="modal-text" class="text-gray-600 mb-6 font-bold">Mensaje</p>
                 <button onclick="closeModal()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition-colors">Entendido</button>
+            </div>
+        </div>
+        
+        <div id="confirm-modal" class="hidden absolute inset-0 bg-black/80 z-[100] flex items-center justify-center p-6 backdrop-blur-sm opacity-0 transition-opacity">
+            <div class="bg-white rounded-3xl p-6 w-full max-w-sm text-center shadow-2xl transform scale-95 transition-transform" id="confirm-content-box">
+                <h3 class="font-display text-2xl text-gray-900 mb-2">¿Salir?</h3>
+                <p class="text-gray-600 mb-6 font-bold">¿Seguro que quieres abandonar la partida actual?</p>
+                <div class="flex gap-3">
+                    <button onclick="closeConfirm()" class="flex-1 bg-gray-200 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-300">Cancelar</button>
+                    <button onclick="exitToHome()" class="flex-1 bg-red-500 text-white font-bold py-3 rounded-xl hover:bg-red-600">Salir</button>
+                </div>
             </div>
         </div>
 
     </div>
 
-    <script>
-        // --- Game Data ---
-        const players = ["Nahim", "Pablo", "Darío", "Ángel", "Paola"];
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Firebase Setup ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'mimic-party-default';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
         
+        let app, db, auth;
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+        } catch(e) {
+            console.error("Firebase init skipped/failed", e);
+        }
+
+        // --- Game Data & State ---
         const memes = [
-            { text: "Pintamos toda la casa... y sin dejar caer una sola gota de pintura que no sea... ¡Qué es eso!", emoji: "🎨" },
+            { text: "Pintamos toda la casa... y sin dejar caer una sola gota... ¡Qué es eso!", emoji: "🎨" },
             { text: "¡Oblígame, prro!", emoji: "🐶" },
             { text: "Mi bebito fiu fiu, caramelo de chocolate.", emoji: "🍫" },
             { text: "Es de chill, bro, es de chill 🤙", emoji: "🤙" },
             { text: "¡Estúpida, mi pelo, idiota!", emoji: "💇‍♀️" },
             { text: "Me agarraste en curva, wey.", emoji: "🏎️" },
             { text: "A ver, a ver, ¿qué pasó?", emoji: "🧐" },
-            { text: "Wey ya.", emoji: "😫" },
             { text: "No me quiero ir Señor Stark...", emoji: "🦸‍♂️" },
-            { text: "¡Cállese viejo lesbiano!", emoji: "🦖" }
+            { text: "¡Cállese viejo lesbiano!", emoji: "🦖" },
+            { text: "Wey ya.", emoji: "😫" }
         ];
 
-        // --- State Variables ---
-        let currentPlayer = "";
-        let currentMeme = null;
-        let mediaRecorder;
-        let audioChunks = [];
-        let audioBlob;
-        let audioUrl;
-        let isRecording = false;
-        let streamRef = null;
+        window.gameState = {
+            mode: null, // 'local' | 'online'
+            player: {
+                id: null,
+                name: '',
+                displayName: '',
+                avatar: '🤖',
+                score: 0
+            },
+            room: {
+                code: null,
+                isHost: false,
+                unsubscribe: null,
+                data: null
+            },
+            currentScreen: 'screen-mode'
+        };
 
-        // --- Initialization ---
-        document.addEventListener('DOMContentLoaded', () => {
-            renderPlayers();
-        });
-
-        // --- UI Navigation ---
-        function navigate(screenId) {
-            // Hide all screens
+        // --- Core Functions ---
+        window.navigate = function(screenId, showHeader = true) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            // Show target
             document.getElementById(screenId).classList.add('active');
+            window.gameState.currentScreen = screenId;
 
-            // Header logic
             const header = document.getElementById('app-header');
-            if (screenId === 'screen-home' || screenId === 'screen-players') {
-                header.classList.add('hidden');
-            } else {
+            if (showHeader && screenId !== 'screen-mode') {
                 header.classList.remove('hidden');
+                header.classList.add('flex');
+                
+                document.getElementById('header-avatar').innerText = window.gameState.player.avatar;
+                document.getElementById('header-player-name').innerText = window.gameState.player.displayName || 'Jugador';
+                
+                const badge = document.getElementById('header-mode-badge');
+                if (window.gameState.mode === 'online') {
+                    badge.innerText = `Sala: ${window.gameState.room.code || '...'}`;
+                    badge.className = "text-[10px] font-bold text-green-300 uppercase tracking-wider";
+                } else {
+                    badge.innerText = "Modo Local";
+                    badge.className = "text-[10px] font-bold text-yellow-300 uppercase tracking-wider";
+                }
+            } else {
+                header.classList.add('hidden');
+                header.classList.remove('flex');
+            }
+        };
+
+        window.selectMode = async function(mode) {
+            window.gameState.mode = mode;
+            if (mode === 'online') {
+                // Require Auth for online
+                if (!auth) {
+                    showModal("Error", "No se pudo conectar a los servidores.");
+                    return;
+                }
+                showModal("Conectando...", "Iniciando sesión segura...");
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                    window.gameState.player.id = auth.currentUser.uid;
+                    closeModal();
+                    navigate('screen-setup', false);
+                } catch (e) {
+                    console.error(e);
+                    showModal("Error", "Fallo al conectar. Juega en modo local.");
+                }
+            } else {
+                navigate('screen-setup', false);
+            }
+        };
+
+        window.selectAvatar = function(emoji, btnElement) {
+            window.gameState.player.avatar = emoji;
+            document.querySelectorAll('.avatar-option').forEach(el => el.classList.remove('selected'));
+            btnElement.classList.add('selected');
+        };
+
+        window.finishSetup = function() {
+            const nameInput = document.getElementById('input-name').value.trim();
+            if (!nameInput) {
+                showModal("¡Hey!", "Por favor ingresa tu nombre para continuar.");
+                return;
             }
 
-            // Cleanups on navigation
-            if (screenId === 'screen-players') {
-                resetGameData();
+            let displayName = nameInput;
+            const lowerName = nameInput.toLowerCase();
+            // Easter egg for Paola / Regina -> Botoncito
+            if (lowerName === 'paola' || lowerName === 'regina') {
+                displayName = `${nameInput} (Botoncito)`;
             }
-        }
 
-        function renderPlayers() {
-            const list = document.getElementById('player-list');
-            list.innerHTML = '';
-            const colors = ['bg-pink-500', 'bg-purple-500', 'bg-indigo-500', 'bg-teal-500', 'bg-orange-500'];
+            window.gameState.player.name = nameInput;
+            window.gameState.player.displayName = displayName;
 
-            players.forEach((player, index) => {
-                const colorClass = colors[index % colors.length];
-                const initial = player.charAt(0).toUpperCase();
+            if (window.gameState.mode === 'local') {
+                startLocalGame();
+            } else {
+                navigate('screen-online-menu');
+            }
+        };
+
+        // --- Local Game Flow ---
+        window.startLocalGame = function() {
+            pickRandomMeme();
+            navigate('screen-action');
+        };
+
+        window.resetLocalRound = function() {
+            // Reset for next player in local mode
+            document.getElementById('input-name').value = '';
+            window.gameState.player.name = '';
+            window.gameState.player.displayName = '';
+            navigate('screen-setup', false);
+        };
+
+        // --- Online Game Flow ---
+        const getRoomRef = (code) => doc(db, 'artifacts', appId, 'public', 'data', 'rooms', code);
+
+        window.createRoom = async function() {
+            if (!auth || !auth.currentUser) return;
+            const btn = document.querySelector('button[onclick="createRoom()"]');
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+            
+            const code = Math.random().toString(36).substring(2, 6).toUpperCase();
+            const roomRef = getRoomRef(code);
+            
+            const roomData = {
+                hostId: window.gameState.player.id,
+                status: 'waiting',
+                meme: null,
+                players: {
+                    [window.gameState.player.id]: {
+                        name: window.gameState.player.displayName,
+                        avatar: window.gameState.player.avatar,
+                        score: 0,
+                        isReady: false
+                    }
+                }
+            };
+
+            try {
+                await setDoc(roomRef, roomData);
+                window.gameState.room.code = code;
+                window.gameState.room.isHost = true;
+                listenToRoom(code);
+            } catch (e) {
+                console.error(e);
+                showModal("Error", "No se pudo crear la sala.");
+                btn.disabled = false;
+                btn.style.opacity = '1';
+            }
+        };
+
+        window.joinRoom = async function() {
+            if (!auth || !auth.currentUser) return;
+            const codeInput = document.getElementById('input-room-code').value.toUpperCase().trim();
+            if (codeInput.length !== 4) {
+                showModal("Error", "El código debe tener 4 letras.");
+                return;
+            }
+
+            const btn = document.getElementById('btn-join-room');
+            btn.disabled = true;
+            btn.innerText = "Conectando...";
+
+            const roomRef = getRoomRef(codeInput);
+            try {
+                const docSnap = await getDoc(roomRef);
+                if (docSnap.exists()) {
+                    // Update room to add player
+                    await setDoc(roomRef, {
+                        players: {
+                            [window.gameState.player.id]: {
+                                name: window.gameState.player.displayName,
+                                avatar: window.gameState.player.avatar,
+                                score: 0,
+                                isReady: false
+                            }
+                        }
+                    }, { merge: true });
+                    
+                    window.gameState.room.code = codeInput;
+                    window.gameState.room.isHost = false;
+                    listenToRoom(codeInput);
+                } else {
+                    showModal("Error", "La sala no existe.");
+                    btn.disabled = false;
+                    btn.innerText = "Unirse a la Sala";
+                }
+            } catch(e) {
+                console.error(e);
+                showModal("Error", "No se pudo conectar.");
+                btn.disabled = false;
+                btn.innerText = "Unirse a la Sala";
+            }
+        };
+
+        function listenToRoom(code) {
+            const roomRef = getRoomRef(code);
+            if (window.gameState.room.unsubscribe) {
+                window.gameState.room.unsubscribe();
+            }
+
+            window.gameState.room.unsubscribe = onSnapshot(roomRef, (docSnap) => {
+                if (!docSnap.exists()) {
+                    showModal("Aviso", "La sala ha sido cerrada.");
+                    exitToHome();
+                    return;
+                }
                 
-                const btn = document.createElement('button');
-                btn.className = 'w-full bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl p-4 flex items-center gap-4 transition-all transform hover:scale-[1.02] active:scale-95';
-                btn.onclick = () => selectPlayer(player, initial, colorClass);
+                const data = docSnap.data();
+                window.gameState.room.data = data;
                 
-                btn.innerHTML = `
-                    <div class="w-12 h-12 rounded-full ${colorClass} flex items-center justify-center text-xl font-bold text-white shadow-inner">
-                        ${initial}
-                    </div>
-                    <span class="font-bold text-xl text-white">${player}</span>
-                    <svg class="w-6 h-6 ml-auto text-blue-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                `;
-                list.appendChild(btn);
+                // Determine Host dynamically in case original host left (simplified: just stick to original)
+                window.gameState.room.isHost = data.hostId === window.gameState.player.id;
+                
+                syncGameState(data);
+            }, (error) => {
+                console.error(error);
             });
         }
 
-        // --- Logic Handlers ---
-        function selectPlayer(name, initial, colorClass) {
-            currentPlayer = name;
-            
-            // Update header
-            const displayName = name === "Paola" ? "Paola (Botoncito)" : name;
-            document.getElementById('header-player-name').innerText = displayName;
-            
-            const avatar = document.getElementById('header-avatar');
-            avatar.innerText = initial;
-            avatar.className = `w-8 h-8 rounded-full ${colorClass} flex items-center justify-center text-white font-bold border border-white/30`;
-            
-            pickRandomMeme();
+        function syncGameState(data) {
+            const { status, players, meme } = data;
+            const isHost = window.gameState.room.isHost;
+
+            // Header Update
+            const badge = document.getElementById('header-mode-badge');
+            if(badge) badge.innerText = `Sala: ${window.gameState.room.code}`;
+
+            if (status === 'waiting') {
+                if (window.gameState.currentScreen !== 'screen-lobby') navigate('screen-lobby');
+                document.getElementById('lobby-room-code').innerText = window.gameState.room.code;
+                
+                // Render Players
+                const playerIds = Object.keys(players);
+                document.getElementById('lobby-count').innerText = `${playerIds.length}/10`;
+                
+                const lobbyList = document.getElementById('lobby-players');
+                lobbyList.innerHTML = '';
+                playerIds.forEach(pid => {
+                    const p = players[pid];
+                    const isMe = pid === window.gameState.player.id;
+                    const hostBadge = data.hostId === pid ? '👑' : '';
+                    lobbyList.innerHTML += `
+                        <div class="flex items-center gap-3 p-3 bg-black/20 rounded-xl mb-2 ${isMe ? 'border border-yellow-400/50' : ''}">
+                            <div class="text-2xl">${p.avatar}</div>
+                            <div class="font-bold text-white flex-1">${p.name} ${hostBadge}</div>
+                            ${isMe ? '<span class="text-xs text-yellow-400 font-bold bg-yellow-400/10 px-2 py-1 rounded">TÚ</span>' : ''}
+                        </div>
+                    `;
+                });
+
+                document.getElementById('host-controls').style.display = isHost ? 'block' : 'none';
+                document.getElementById('guest-controls').style.display = !isHost ? 'block' : 'none';
+
+            } else if (status === 'playing') {
+                if (window.gameState.currentScreen === 'screen-lobby' || window.gameState.currentScreen === 'screen-results') {
+                    // Start of round
+                    setMemeUI(meme);
+                    resetRecordingUI();
+                    navigate('screen-action');
+                }
+                
+                // If I'm host, check if everyone is ready to move to results
+                if (isHost && window.gameState.currentScreen === 'screen-waiting') {
+                    const allReady = Object.values(players).every(p => p.isReady);
+                    if (allReady) {
+                        updateDoc(getRoomRef(window.gameState.room.code), { status: 'results' });
+                    }
+                }
+
+            } else if (status === 'results') {
+                if (window.gameState.currentScreen !== 'screen-results') {
+                    renderOnlineLeaderboard(players);
+                    navigate('screen-results');
+                }
+            }
         }
 
-        function pickRandomMeme() {
-            const randomIndex = Math.floor(Math.random() * memes.length);
-            const meme = memes[randomIndex];
+        window.startOnlineGame = async function() {
+            if (!window.gameState.room.isHost) return;
+            const code = window.gameState.room.code;
+            const roomRef = getRoomRef(code);
             
-            currentMeme = meme;
+            const randomMeme = memes[Math.floor(Math.random() * memes.length)];
+            
+            // Reset players 'isReady' status
+            const updates = {
+                status: 'playing',
+                meme: randomMeme
+            };
+            
+            const currentPlayers = window.gameState.room.data.players;
+            Object.keys(currentPlayers).forEach(pid => {
+                updates[`players.${pid}.isReady`] = false;
+            });
+
+            await updateDoc(roomRef, updates);
+        };
+
+        // --- Action / Recording Flow ---
+        function pickRandomMeme() {
+            const randomMeme = memes[Math.floor(Math.random() * memes.length)];
+            setMemeUI(randomMeme);
+        }
+
+        function setMemeUI(meme) {
+            window.currentMeme = meme;
             document.getElementById('action-meme-text').innerText = `"${meme.text}"`;
             document.getElementById('action-emoji').innerText = meme.emoji;
-            navigate('screen-action');
         }
 
-        function resetGameData() {
-            currentMeme = null;
-            audioChunks = [];
-            if (audioUrl) URL.revokeObjectURL(audioUrl);
-            audioBlob = null;
-            
-            // Reset UI of results
-            document.getElementById('score-container').classList.add('hidden');
-            document.getElementById('score-circle').setAttribute('stroke-dasharray', '0, 100');
-            document.getElementById('score-value').innerText = '0';
-            
-            const analyzingContainer = document.getElementById('analyzing-container');
-            if (analyzingContainer) {
-                analyzingContainer.classList.add('hidden');
-                document.getElementById('analyzing-bar').style.width = '0%';
-            }
-            
-            document.getElementById('btn-next-player').classList.add('hidden');
-            document.getElementById('audio-playback').src = '';
-            
-            // Reset UI of action
-            document.getElementById('record-status').innerText = 'Toca para grabar';
-            document.getElementById('btn-record').classList.remove('recording-pulse');
-            document.getElementById('icon-mic').classList.remove('hidden');
-            document.getElementById('icon-stop').classList.add('hidden');
-            isRecording = false;
-        }
-
-        // --- Speech Synthesis API ---
-        function listenMeme() {
-            if (!currentMeme) return;
+        window.listenMeme = function() {
+            if (!window.currentMeme) return;
             if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel(); // Stop anything playing
-                const utterance = new SpeechSynthesisUtterance(currentMeme.text);
-                utterance.lang = 'es-MX'; // Prefer Mexican Spanish for memes if available
-                utterance.pitch = 1.6; // High pitch for funny voice
-                utterance.rate = 1.1;  // Slightly faster
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(window.currentMeme.text);
+                utterance.lang = 'es-MX';
+                utterance.pitch = 1.6;
+                utterance.rate = 1.1;
                 window.speechSynthesis.speak(utterance);
             } else {
-                showModal("Error", "Tu navegador no soporta lectura de voz.");
+                showModal("Aviso", "Tu navegador no soporta lectura de voz.");
             }
-        }
+        };
 
-        // --- MediaRecorder API ---
-        async function toggleRecording() {
-            const btnRecord = document.getElementById('btn-record');
-            const statusTxt = document.getElementById('record-status');
-            const iconMic = document.getElementById('icon-mic');
-            const iconStop = document.getElementById('icon-stop');
-
-            if (!isRecording) {
-                // START RECORDING
-                try {
-                    // Request mic access
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    streamRef = stream;
-                    mediaRecorder = new MediaRecorder(stream);
-                    audioChunks = [];
-
-                    mediaRecorder.ondataavailable = event => {
-                        if (event.data.size > 0) {
-                            audioChunks.push(event.data);
-                        }
-                    };
-
-                    mediaRecorder.onstop = () => {
-                        audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                        audioUrl = URL.createObjectURL(audioBlob);
-                        document.getElementById('audio-playback').src = audioUrl;
-                        
-                        // Stop all tracks to release mic
-                        streamRef.getTracks().forEach(track => track.stop());
-                        
-                        // Automatically go to results and start analyzing
-                        navigate('screen-results');
-                        startAnalyzing();
-                    };
-
-                    mediaRecorder.start();
-                    isRecording = true;
-                    
-                    // Update UI
-                    btnRecord.classList.add('recording-pulse');
-                    iconMic.classList.add('hidden');
-                    iconStop.classList.remove('hidden');
-                    statusTxt.innerText = 'Grabando... Toca para detener';
-                    statusTxt.classList.add('text-red-300');
-                    statusTxt.classList.remove('text-blue-200');
-
-                } catch (err) {
-                    console.error("Error accessing mic:", err);
-                    showModal("Permiso Denegado", "Necesitamos acceso al micrófono para que puedas imitar el meme. Por favor, acéptalo en tu navegador.");
-                }
-            } else {
-                // STOP RECORDING
-                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                    mediaRecorder.stop();
-                    isRecording = false;
-                    
-                    // Reset UI slightly before transition
-                    btnRecord.classList.remove('recording-pulse');
-                    statusTxt.innerText = 'Procesando...';
-                }
-            }
-        }
-
-        // --- Scoring System ---
-        function startAnalyzing() {
-            const analyzingContainer = document.getElementById('analyzing-container');
-            const analyzingBar = document.getElementById('analyzing-bar');
+        function resetRecordingUI() {
+            const btn = document.getElementById('btn-record');
+            const status = document.getElementById('record-status');
+            const bar = document.getElementById('record-progress-bar');
+            const container = document.getElementById('record-progress-container');
             
-            analyzingContainer.classList.remove('hidden');
-            analyzingContainer.style.display = 'flex';
+            btn.classList.remove('is-recording');
+            btn.disabled = false;
+            status.innerText = "Toca para grabar";
+            status.className = "font-bold text-xl text-blue-200";
+            bar.style.width = '0%';
+            container.classList.add('hidden');
+        }
+
+        window.startFakeRecording = function() {
+            const btn = document.getElementById('btn-record');
+            const status = document.getElementById('record-status');
+            const bar = document.getElementById('record-progress-bar');
+            const container = document.getElementById('record-progress-container');
+
+            if (btn.classList.contains('is-recording')) return;
+
+            // Start fake record
+            btn.classList.add('is-recording');
+            btn.disabled = true;
+            status.innerText = "¡Grabando! Habla ahora...";
+            status.className = "font-bold text-xl text-red-400 animate-pulse";
+            container.classList.remove('hidden');
             
             // Force reflow
-            void analyzingBar.offsetWidth;
-            
-            // Animate bar
-            analyzingBar.style.width = '100%';
-            
-            // Wait for 3 seconds then reveal score
+            void bar.offsetWidth;
+            bar.style.width = '100%';
+
             setTimeout(() => {
-                analyzingContainer.classList.add('hidden');
-                analyzingBar.style.width = '0%';
-                revealScore();
-            }, 3000);
+                btn.classList.remove('is-recording');
+                navigate('screen-analyzing');
+                
+                // Simulate analysis delay
+                setTimeout(() => {
+                    processScore();
+                }, 2500);
+
+            }, 3000); // 3 seconds fake recording
+        };
+
+        async function processScore() {
+            const score = Math.floor(Math.random() * 100) + 1;
+            window.gameState.player.score = score;
+
+            if (window.gameState.mode === 'local') {
+                renderLocalResults(score);
+                navigate('screen-results');
+            } else {
+                // Online mode: submit score and wait
+                navigate('screen-waiting');
+                try {
+                    const roomRef = getRoomRef(window.gameState.room.code);
+                    await updateDoc(roomRef, {
+                        [`players.${window.gameState.player.id}.score`]: score,
+                        [`players.${window.gameState.player.id}.isReady`]: true
+                    });
+                } catch(e) {
+                    console.error("Error submitting score", e);
+                }
+            }
         }
 
-        function revealScore() {
-            const btnNext = document.getElementById('btn-next-player');
-            const scoreContainer = document.getElementById('score-container');
+        function renderLocalResults(score) {
+            document.getElementById('results-title').innerText = "Tu Resultado";
+            document.getElementById('local-result-view').classList.remove('hidden');
+            document.getElementById('local-result-view').classList.add('flex');
+            document.getElementById('online-result-view').classList.add('hidden');
+            document.getElementById('online-result-view').classList.remove('flex');
+            
+            document.getElementById('local-result-name').innerText = window.gameState.player.displayName;
+            
+            animateScoreDisplay(score);
+        }
+
+        function renderOnlineLeaderboard(playersData) {
+            document.getElementById('results-title').innerText = "Tabla de Posiciones";
+            document.getElementById('local-result-view').classList.add('hidden');
+            document.getElementById('local-result-view').classList.remove('flex');
+            document.getElementById('online-result-view').classList.remove('hidden');
+            document.getElementById('online-result-view').classList.add('flex');
+
+            const isHost = window.gameState.room.isHost;
+            document.getElementById('host-next-round').style.display = isHost ? 'block' : 'none';
+            document.getElementById('guest-next-round').style.display = !isHost ? 'block' : 'none';
+
+            // Sort players by score
+            const sortedPlayers = Object.values(playersData).sort((a, b) => b.score - a.score);
+            
+            const list = document.getElementById('leaderboard-list');
+            list.innerHTML = '';
+            
+            sortedPlayers.forEach((p, index) => {
+                let medal = '';
+                let bgClass = 'bg-white/10';
+                if (index === 0) { medal = '🥇'; bgClass = 'bg-yellow-500/20 border border-yellow-400'; }
+                else if (index === 1) { medal = '🥈'; }
+                else if (index === 2) { medal = '🥉'; }
+
+                list.innerHTML += `
+                    <div class="flex items-center gap-4 p-4 ${bgClass} rounded-2xl">
+                        <div class="text-2xl font-bold w-6 text-center text-blue-200">${index + 1}</div>
+                        <div class="text-3xl">${p.avatar}</div>
+                        <div class="font-bold text-white flex-1 text-lg">${p.name} ${medal}</div>
+                        <div class="font-display text-2xl text-yellow-400">${p.score}</div>
+                    </div>
+                `;
+            });
+        }
+
+        function animateScoreDisplay(score) {
             const scoreValue = document.getElementById('score-value');
             const scoreCircle = document.getElementById('score-circle');
             const scoreMessage = document.getElementById('score-message');
-
-            scoreContainer.classList.remove('hidden');
-            scoreContainer.style.display = 'flex'; // Force flex
             
-            // Random score 1-100
-            const score = Math.floor(Math.random() * 100) + 1;
+            scoreCircle.setAttribute('stroke-dasharray', `0, 100`);
             
-            // Animate score number
             let currentNum = 0;
             const interval = setInterval(() => {
                 currentNum += 2;
                 if (currentNum >= score) {
                     currentNum = score;
                     clearInterval(interval);
-                    btnNext.classList.remove('hidden');
                     
-                    // Set message based on score
                     if (score < 30) {
                         scoreMessage.innerHTML = "¡Terrible! Mis oídos sangran 🩸";
-                        scoreMessage.className = "mt-6 text-xl font-bold px-4 text-red-400";
+                        scoreMessage.className = "text-xl font-bold mt-4 text-red-400";
                         scoreCircle.classList.replace('text-yellow-400', 'text-red-500');
                     } else if (score < 60) {
                         scoreMessage.innerHTML = "Meh... le faltó sentimiento 😐";
-                        scoreMessage.className = "mt-6 text-xl font-bold px-4 text-yellow-200";
-                        scoreCircle.classList.replace('text-yellow-400', 'text-yellow-400');
+                        scoreMessage.className = "text-xl font-bold mt-4 text-yellow-200";
+                        scoreCircle.classList.replace('text-red-500', 'text-yellow-400');
+                        scoreCircle.classList.replace('text-green-400', 'text-yellow-400');
                     } else if (score < 90) {
                         scoreMessage.innerHTML = "¡Casi perfecto! Muy gracioso 😂";
-                        scoreMessage.className = "mt-6 text-xl font-bold px-4 text-green-400";
+                        scoreMessage.className = "text-xl font-bold mt-4 text-green-400";
                         scoreCircle.classList.replace('text-yellow-400', 'text-green-400');
                     } else {
                         scoreMessage.innerHTML = "¡OBRA MAESTRA! Eres un meme andante 👑";
-                        scoreMessage.className = "mt-6 text-2xl font-display px-4 text-yellow-300 drop-shadow-lg";
+                        scoreMessage.className = "text-2xl font-display mt-4 text-yellow-300 drop-shadow-lg";
                         scoreCircle.classList.replace('text-yellow-400', 'text-yellow-300');
                     }
                 }
                 scoreValue.innerText = currentNum;
             }, 20);
 
-            // Animate circle
             setTimeout(() => {
                 scoreCircle.setAttribute('stroke-dasharray', `${score}, 100`);
             }, 50);
         }
 
-        // --- Custom Modal ---
-        function showModal(title, text) {
+        // --- Utils & Modals ---
+        window.showModal = function(title, text) {
             const modal = document.getElementById('custom-modal');
             const content = document.getElementById('modal-content-box');
-            
             document.getElementById('modal-title').innerText = title;
             document.getElementById('modal-text').innerText = text;
-            
             modal.classList.remove('hidden');
-            // Trigger reflow
             void modal.offsetWidth;
             modal.classList.add('opacity-100');
             content.classList.remove('scale-95');
             content.classList.add('scale-100');
-        }
+        };
 
-        function closeModal() {
+        window.closeModal = function() {
             const modal = document.getElementById('custom-modal');
             const content = document.getElementById('modal-content-box');
-            
             modal.classList.remove('opacity-100');
             content.classList.remove('scale-100');
             content.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        };
+
+        window.confirmExit = function() {
+            const modal = document.getElementById('confirm-modal');
+            const content = document.getElementById('confirm-content-box');
+            modal.classList.remove('hidden');
+            void modal.offsetWidth;
+            modal.classList.add('opacity-100');
+            content.classList.remove('scale-95');
+            content.classList.add('scale-100');
+        };
+
+        window.closeConfirm = function() {
+            const modal = document.getElementById('confirm-modal');
+            const content = document.getElementById('confirm-content-box');
+            modal.classList.remove('opacity-100');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        };
+
+        window.exitToHome = function() {
+            closeConfirm();
+            if (window.gameState.room.unsubscribe) {
+                window.gameState.room.unsubscribe();
+            }
+            window.gameState.mode = null;
+            window.gameState.room = { code: null, isHost: false, unsubscribe: null, data: null };
+            document.getElementById('input-room-code').value = '';
             
-            setTimeout(() => {
-                modal.classList.add('hidden');
-            }, 300); // match transition duration
-        }
+            const joinBtn = document.getElementById('btn-join-room');
+            if (joinBtn) {
+                joinBtn.disabled = false;
+                joinBtn.innerText = "Unirse a la Sala";
+            }
+            const createBtn = document.querySelector('button[onclick="createRoom()"]');
+            if (createBtn) {
+                createBtn.disabled = false;
+                createBtn.style.opacity = '1';
+            }
+
+            navigate('screen-mode', false);
+        };
 
     </script>
 </body>
